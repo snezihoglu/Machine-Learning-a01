@@ -130,10 +130,18 @@ def nb_predict(model, Xnew):
     yhat = np.zeros(Nnew).astype(np.int64)
     logprob = np.zeros(Nnew)
     # YOUR CODE HERE
+    for i in range(Nnew):
+        # logcls[c, j, Xnew[i, j]] for all classes c and features j -> shape (C, D)
+        loglik = logcls[:, np.arange(D), Xnew[i]]
+        logjoint[i] = logpriors + loglik.sum(axis=1)
 
     # Compute predicted labels (in "yhat") and their log probabilities
     # P(yhat_i | x_i) (in "logprob")
     # YOUR CODE HERE
+    yhat = np.argmax(logjoint, axis=1)
+    # log P(yhat_i | x_i) = log P(yhat_i, x_i) - log sum_c P(c, x_i)
+    # (logsumexp works column-wise, so we transpose to put classes in rows)
+    logprob = logjoint[np.arange(Nnew), yhat] - logsumexp(logjoint.T)
 
     return dict(yhat=yhat, logprob=logprob)
 
