@@ -89,3 +89,19 @@ model
 #         [[-1.38629436, -0.69314718, -1.38629436],
 #          [-1.38629436, -0.69314718, -1.38629436]]]),
 #  'logpriors': array([-0.84729786, -1.25276297, -1.25276297])}
+
+# %% [markdown]
+# ## 1c) Training on the MNIST digits data
+# We train on the full training set (no sampling needed) and measure the time.
+
+# %%
+import time
+
+start = time.perf_counter()
+model = nb_train(X, y, alpha=2)
+elapsed = time.perf_counter() - start
+
+print(f"Training on N={N} examples took {elapsed:.2f} seconds")
+print("logpriors shape:", model["logpriors"].shape)
+print("logcls shape:   ", model["logcls"].shape)
+print("Class priors:", np.round(np.exp(model["logpriors"]), 4))
