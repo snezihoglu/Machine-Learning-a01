@@ -83,9 +83,9 @@ def nb_train(X, y, alpha=1, K=None, C=None):
         X_c = X[y == c]
         N_c = len(X_c)
         
-        # 1. Class Priors p(y = c) = N_c / N
-        priors[c] = N_c / N
-        
+        # 1. Class priors with symmetric Dirichlet prior (MAP estimate)
+        priors[c] = (N_c + alpha - 1) / (N + C * (alpha - 1))
+
         # 2. Class-conditional probabilities p(x_j = v | y = c) with Dirichlet prior / Laplace smoothing
         if N_c > 0:
             for j in range(D):
