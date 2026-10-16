@@ -115,4 +115,23 @@ plt.xlabel("Confidence bin")
 plt.ylabel("Accuracy")
 plt.show()
 
+# %% [markdown]
+# ## Additional analysis for the discussion
+# Most frequent confusions and how confident the model is in its predictions.
+
 # %%
+# Most frequent confusions (true -> predicted), off-diagonal entries of M
+M_off = M.copy()
+np.fill_diagonal(M_off, 0)
+print("Most frequent confusions (true -> predicted):")
+for k in np.argsort(-M_off.ravel())[:6]:
+    i, j = np.unravel_index(k, M_off.shape)
+    print(f"  {i} -> {j}: {M_off[i, j]}")
+
+# Overconfidence: how often is the model (almost) certain, and how often is it right then?
+conf = np.exp(logprob)
+correct = yhat == ytest
+print(f"Predictions with confidence > 0.99: {np.mean(conf > 0.99):.1%}")
+print(f"  accuracy among them:              {np.mean(correct[conf > 0.99]):.1%}")
+print(f"Errors with confidence > 0.99:      {np.mean(conf[~correct] > 0.99):.1%}")
+print(f"Median confidence of errors:        {np.median(conf[~correct]):.4f}")
