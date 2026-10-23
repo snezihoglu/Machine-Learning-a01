@@ -83,9 +83,9 @@ def nb_train(X, y, alpha=1, K=None, C=None):
         X_c = X[y == c]
         N_c = len(X_c)
         
-        # 1. Class Priors p(y = c) = N_c / N
-        priors[c] = N_c / N
-        
+        # 1. Class priors with symmetric Dirichlet prior (MAP estimate)
+        priors[c] = (N_c + alpha - 1) / (N + C * (alpha - 1))
+
         # 2. Class-conditional probabilities p(x_j = v | y = c) with Dirichlet prior / Laplace smoothing
         if N_c > 0:
             for j in range(D):
@@ -130,10 +130,18 @@ def nb_predict(model, Xnew):
     yhat = np.zeros(Nnew).astype(np.int64)
     logprob = np.zeros(Nnew)
     # YOUR CODE HERE
+    for i in range(Nnew):
+        # logcls[c, j, Xnew[i, j]] for all classes c and features j -> shape (C, D)
+        loglik = logcls[:, np.arange(D), Xnew[i]]
+        logjoint[i] = logpriors + loglik.sum(axis=1)
 
     # Compute predicted labels (in "yhat") and their log probabilities
     # P(yhat_i | x_i) (in "logprob")
     # YOUR CODE HERE
+    yhat = np.argmax(logjoint, axis=1)
+    # log P(yhat_i | x_i) = log P(yhat_i, x_i) - log sum_c P(c, x_i)
+    # (logsumexp works column-wise, so we transpose to put classes in rows)
+    logprob = logjoint[np.arange(Nnew), yhat] - logsumexp(logjoint.T)
 
     return dict(yhat=yhat, logprob=logprob)
 
@@ -157,15 +165,26 @@ def nb_generate(model, ygen):
     ygen.
     """
     logcls = model["logcls"]
-    n = len(ygen)
     C, D, K = logcls.shape
-    Xgen = np.zeros((n, D))
+    ygen = np.asarray(ygen)
+    if ygen.ndim != 1:
+        raise ValueError("ygen must be a one-dimensional array of class labels")
+    if ygen.size == 0:
+        return np.empty((0, D), dtype=np.int64)
+    if not np.issubdtype(ygen.dtype, np.integer):
+        raise TypeError("ygen must contain integer class labels")
+    if np.any((ygen < 0) | (ygen >= C)):
+        raise ValueError(f"class labels must be in the range [0, {C - 1}]")
+
+    n = len(ygen)
+    Xgen = np.empty((n, D), dtype=np.int64)
     for i in range(n):
         c = ygen[i]
         # Generate the i-th example of class c, i.e., row Xgen[i,:]. To sample
         # from a categorical distribution with parameter theta (a probability
         # vector), you can use np.random.choice(range(K),p=theta).
-        # YOUR CODE HERE
+        for j in range(D):
+            Xgen[i, j] = np.random.choice(K, p=np.exp(logcls[c, j, :]))
 
     return Xgen
 

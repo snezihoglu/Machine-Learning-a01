@@ -16,6 +16,8 @@
 # # 5 Generating Data
 
 # %%
+from pathlib import Path
+
 # %load_ext autoreload
 # %autoreload 2
 
@@ -23,15 +25,35 @@ from a01_helper import *
 from a01_functions import nb_train, nb_generate
 
 # %%
-# let's generate 15 digits from each class and plot
-
-model_nb2 = nb_train(X, y, alpha=2)
+# Generate 15 digits from each class for several smoothing values. Each model
+# is trained once; the alpha=2 model is reused for the parameter plots below.
+alpha_values = [1, 2, 10]
+models_by_alpha = {
+    alpha: nb_train(X, y, alpha=alpha) for alpha in alpha_values
+}
+model_nb2 = models_by_alpha[2]
 ygen = np.repeat(np.arange(10), 15)
-Xgen = nb_generate(model_nb2, ygen)
+Xgen_by_alpha = {
+    alpha: nb_generate(models_by_alpha[alpha], ygen) for alpha in alpha_values
+}
 
-nextplot()
-showdigits(Xgen, ygen)
-plt.suptitle("Some generated digits for each class")
+plot_dir = Path("task5_plots")
+plot_dir.mkdir(exist_ok=True)
+
+for alpha in alpha_values:
+    nextplot()
+    showdigits(Xgen_by_alpha[alpha], ygen)
+    title = (
+        "Some generated digits for each class (alpha=2)"
+        if alpha == 2
+        else f"Generated digits (alpha={alpha})"
+    )
+    plt.suptitle(title)
+    plt.savefig(plot_dir / f"generated_alpha_{alpha}.png", bbox_inches="tight")
+    plt.show()
+
+# Reuse the alpha=2 samples for the parameter plots below.
+Xgen = Xgen_by_alpha[2]
 
 # %%
 # we can also plot the parameter vectors by choosing the most-likely
@@ -44,6 +66,7 @@ for c in range(10):
 nextplot()
 showdigits(Xmax, ymax)
 plt.suptitle("Most likely value of each feature per class")
+plt.savefig(plot_dir / "most_likely_alpha_2.png", bbox_inches="tight")
 plt.show()
 
 # %%
@@ -61,6 +84,7 @@ for c in range(10):
 nextplot()
 showdigits(Xmean, ymean)
 plt.suptitle("Expected value of each feature per class")
+plt.savefig(plot_dir / "expected_value_alpha_2.png", bbox_inches="tight")
 plt.show()
 
 
