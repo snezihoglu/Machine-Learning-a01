@@ -165,15 +165,26 @@ def nb_generate(model, ygen):
     ygen.
     """
     logcls = model["logcls"]
-    n = len(ygen)
     C, D, K = logcls.shape
-    Xgen = np.zeros((n, D))
+    ygen = np.asarray(ygen)
+    if ygen.ndim != 1:
+        raise ValueError("ygen must be a one-dimensional array of class labels")
+    if ygen.size == 0:
+        return np.empty((0, D), dtype=np.int64)
+    if not np.issubdtype(ygen.dtype, np.integer):
+        raise TypeError("ygen must contain integer class labels")
+    if np.any((ygen < 0) | (ygen >= C)):
+        raise ValueError(f"class labels must be in the range [0, {C - 1}]")
+
+    n = len(ygen)
+    Xgen = np.empty((n, D), dtype=np.int64)
     for i in range(n):
         c = ygen[i]
         # Generate the i-th example of class c, i.e., row Xgen[i,:]. To sample
         # from a categorical distribution with parameter theta (a probability
         # vector), you can use np.random.choice(range(K),p=theta).
-        # YOUR CODE HERE
+        for j in range(D):
+            Xgen[i, j] = np.random.choice(K, p=np.exp(logcls[c, j, :]))
 
     return Xgen
 

@@ -1,0 +1,122 @@
+% Do not change document class, margins, fonts, etc.
+\documentclass[a4paper,oneside,bibliography=totoc]{scrartcl}
+
+% some useful packages (add more as needed)
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{algorithm} % you can modify the algorithm style to your liking
+\usepackage{algorithmic}
+\usepackage{csquotes}
+\renewcommand{\algorithmiccomment}[1]{\hfill\textit{// #1}}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage[colorlinks,citecolor=Green]{hyperref} % you may change/remove the colors
+\usepackage{lipsum} % you do not need this
+\usepackage{environ}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.gates.logic.US,shapes.gates.logic.IEC,automata,arrows, backgrounds}
+\usepackage{natbib}
+\bibliographystyle{chicagoa}
+\setcitestyle{authoryear,round,semicolon,aysep={},yysep={,}} \let\cite\citep
+\usepackage{enumerate}
+
+% example enviroments and commands (add more as needed)
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+
+\newcommand\todo[1]{\textcolor{red}{\framebox{\footnotesize TODO}\expandafter\ifx\expandafter\relax\detokenize{#1}\relax\else\ #1\fi}}
+
+
+% DO NOT MODIFY
+\newlength\oldparskip
+\NewEnviron{answer}[1][8cm]{%
+  \sbox{0}{\parbox[t][#1][t]{0.99\linewidth}{%
+      \setlength{\oldparskip}{\parskip}%
+      \setlength{\parskip}{.5em}%
+      \BODY%
+      ~%
+      \setlength{\parskip}{\oldparskip}%
+    }}%
+
+  \begin{tikzpicture}
+    % inner sep restores the \fbox padding
+    \node[inner sep=\fboxsep, outer sep=0pt] (A) {\usebox{0}};
+    % border thickness like \fboxrule
+    \draw[line width=\fboxrule] (A.south west) rectangle (A.north east);
+  \end{tikzpicture}%
+  \vskip\baselineskip
+}
+
+
+\begin{document}
+
+\title{ML26, Assignment 1}
+\author{Selma Nezihoglu (snezihog, 2390917)\\
+  \todo{Student 2 name (login, matriculation number)}}
+\date{October 25, 2026}
+
+\maketitle
+
+\section*{Tasks 3a) and 3b)}
+\begin{answer}[19cm]
+  % YOUR ANSWER HERE
+\end{answer}
+
+\section*{Task 5b)}
+\begin{answer}[19cm]
+We trained categorical Naive Bayes models on the full MNIST training set using $\alpha=1$, $\alpha=2$, and $\alpha=10$, generating 15 images per digit class for each model. With $\alpha=1$, no smoothing is applied; $\alpha=2$ corresponds to add-one smoothing, while $\alpha=10$ applies stronger smoothing.
+
+\textbf{Effect of smoothing.} Samples generated with $\alpha=1$ and $\alpha=2$ generally retain recognizable digit shapes, although some contain noise or incomplete strokes. With $\alpha=10$, the samples appear noisier and less class-specific. Increasing $\alpha$ pulls the estimated categorical distributions towards uniformity, making pixel intensities less strongly associated with typical strokes or background. This weakens the visual structure associated with each class. In our qualitative comparison, stronger smoothing did not improve the generated images; this observation alone does not establish differences in classification accuracy.
+
+\textbf{Most-likely and expected-pixel images.} For $\alpha=2$, we also examined both representations for each class. The most-likely image selects the most probable intensity independently at each pixel, forming a class prototype that need not correspond to an actual training image. The expected-pixel image instead shows the mean intensity at each location under the learned distribution. It can reveal the overall digit shape, but variations across examples may produce blurred regions and intermediate intensities. Since these values are averages, the expected-pixel image need not be a valid categorical sample.
+
+\textbf{Model limitations.} The model learns a separate pixel distribution conditioned on the digit class but assumes that pixels are conditionally independent given that class. It captures typical intensities at individual locations, not the spatial relationships that form connected strokes, curves, and junctions. Consequently, independently sampled pixels can produce broken strokes, inconsistent shapes, or isolated noise, even when individual pixel values are plausible. This explains why generated digits may be recognizable without being as coherent as real handwriting.
+
+Overall, our experiment shows that stronger smoothing makes the generated samples less class-specific. The most-likely and expected-pixel images summarize the learned distributions, while sampled images reveal the limitations of generating coherent handwriting under the conditional-independence assumption.
+\end{answer}
+
+\section*{Task 6}
+\begin{answer}[19cm]
+We derive the required distributions using the Naive Bayes assumption that features are conditionally independent given the class label.
+
+\textbf{(a) Complete feature vector.}
+For an example with all $D$ features observed, Bayes' rule gives
+\[
+p(y=c\mid x_{1:D})=
+\frac{p(y=c)\prod_{j=1}^{D}p(x_j\mid y=c)}
+{\sum_{c'=0}^{C-1}p(y=c')\prod_{j=1}^{D}p(x_j\mid y=c')}.
+\]
+The numerator combines the class prior and the likelihood, while the denominator normalizes over all classes. We classify the example by selecting the class with the highest posterior probability.
+
+\textbf{(b) Observed prefix.}
+If only the first $D'$ features are observed, we obtain
+\[
+p(y=c\mid x_{1:D'})=
+\frac{p(y=c)\prod_{j=1}^{D'}p(x_j\mid y=c)}
+{\sum_{c'=0}^{C-1}p(y=c')\prod_{j=1}^{D'}p(x_j\mid y=c')}.
+\]
+The missing features are marginalized out: their conditional probabilities sum to one. Thus, we can classify an incomplete example using only its observed prefix, although fewer observations may lead to greater uncertainty.
+
+\textbf{(c) Missing suffix.}
+To predict the missing features while accounting for uncertainty about the class, we marginalize over all possible classes:
+\[
+p(x_{D'+1:D}\mid x_{1:D'})=
+\sum_{c=0}^{C-1}p(y=c\mid x_{1:D'})
+\prod_{j=D'+1}^{D}p(x_j\mid y=c).
+\]
+Each class-specific distribution over the missing suffix is weighted by its posterior probability given the prefix. This produces a mixture of possible completions rather than assuming that the most probable class is certainly correct.
+
+\textbf{Experiment and observations.}
+In our optional experiment, we conditioned on the first 14 rows of the first test image and generated five completions using $\alpha=2$ and random seed $0$. Both the true label and the most probable class inferred from the prefix were 7. All completions preserved the observed prefix but varied in the missing region, illustrating that the model generates possible completions rather than a unique reconstruction. Some details were noisy or disconnected because the conditional-independence assumption does not capture dependencies between neighboring pixels. The correct class prediction in this example does not guarantee equally accurate predictions for every image.
+\end{answer}
+
+
+
+\newpage
+\input{ai-declaration.tex}
+
+\end{document}
