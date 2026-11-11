@@ -46,6 +46,32 @@ plt.show()
 # %%
 # this plots is not really helpful; go now explore further
 # YOUR CODE HERE
+import pandas as pd
+
+# The three feature groups live on very different scales, so plot each group separately
+# and cut the x-axis at the 99th percentile of the group to see where most of the mass is.
+groups = {
+    "word frequencies (features 0-47)": range(0, 48),
+    "character frequencies (features 48-53)": range(48, 54),
+    "capital run lengths (features 54-56)": range(54, 57),
+}
+for title, idx in groups.items():
+    idx = list(idx)
+    nextplot()
+    xs_group = np.linspace(0, np.percentile(X[:, idx], 99), 200)
+    for j in idx:
+        plt.plot(xs_group, densities[j](xs_group), label=features[j])
+    plt.title(f"Density of {title}")
+    plt.legend(ncol=3, fontsize="x-small")
+    plt.show()
+
+# Scale and sparsity of each feature
+stats = pd.DataFrame(
+    {"mean": X.mean(axis=0), "max": X.max(axis=0), "share_zero": (X == 0).mean(axis=0)},
+    index=features,
+)
+print(f"Median share of zeros per feature: {stats['share_zero'].median():.2f}")
+stats.sort_values("max", ascending=False).head(10)
 
 # %%
 # Let's compute z-scores; create two new variables Xz and Xtestz by completing the
