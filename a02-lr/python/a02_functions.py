@@ -27,7 +27,13 @@ def normalize_data(X, Xtest):
     Xz, Xtestz : two 2D ndarrays
     """
     # YOUR CODE HERE
-    pass
+    # Mean and standard deviation are estimated on the training data only and then
+    # applied to both sets, so that test data is transformed in exactly the same way.
+    mean = np.mean(X, axis=0)
+    std = np.std(X, axis=0)
+    Xz = (X - mean) / std
+    Xtestz = (Xtest - mean) / std
+    return Xz, Xtestz
 
 
 # %%

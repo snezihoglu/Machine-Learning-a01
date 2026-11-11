@@ -92,5 +92,29 @@ np.sum(Xz**3)  # should be: 1925261.15
 # %%
 # Explore the normalized data
 # YOUR CODE HERE
+# Same density plot as above, now on the z-scores (all features on one common scale)
+nextplot()
+densities_z = [scipy.stats.gaussian_kde(Xz[:, j]) for j in range(D)]
+xs_z = np.linspace(np.min(Xz), np.max(Xz), 400)
+for j in range(D):
+    plt.plot(xs_z, densities_z[j](xs_z), label=j)
+plt.legend(ncol=5)
+plt.title("Density of all features after z-score normalization")
+plt.show()
+
+# Zoom into the region where most of the data lies
+nextplot()
+xs_zoom = np.linspace(-1, 5, 400)
+for j in range(D):
+    plt.plot(xs_zoom, densities_z[j](xs_zoom), label=j)
+plt.title("Zoom: z-scores between -1 and 5")
+plt.show()
+
+# Features with the most extreme z-scores (outliers after normalization)
+stats_z = pd.DataFrame(
+    {"min_z": Xz.min(axis=0), "max_z": Xz.max(axis=0), "share_zero": (X == 0).mean(axis=0)},
+    index=features,
+)
+stats_z.sort_values("max_z", ascending=False).head(8)
 
 # %%
