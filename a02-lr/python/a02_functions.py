@@ -56,7 +56,9 @@ def logsumexp(x):
 # Define the logistic function. Make sure it operates on both scalars and vectors.
 def sigma(x):
     # YOUR CODE HERE
-    pass
+    # sigma(x) = 1 / (1 + exp(-x)); computed as exp(logsigma(x)) so that large negative
+    # inputs do not overflow np.exp
+    return np.exp(logsigma(x))
 
 
 # %%
@@ -64,7 +66,9 @@ def sigma(x):
 # and vectors. Perhaps helpful: isinstance(x, np.ndarray).
 def logsigma(x):
     # YOUR CODE HERE
-    pass
+    # log sigma(x) = -log(1 + exp(-x)); np.logaddexp(0, -x) evaluates log(exp(0) + exp(-x))
+    # stably and works for scalars and arrays alike
+    return -np.logaddexp(0, -x)
 
 
 # %%
@@ -81,7 +85,10 @@ def er(y, X, w):
         Weight vector.
     """
     # YOUR CODE HERE
-    pass
+    # Average negative log-likelihood. Using 1 - sigma(z) = sigma(-z):
+    # R(w) = -1/N * sum_i [ y_i log sigma(x_i^T w) + (1 - y_i) log sigma(-x_i^T w) ]
+    z = X @ w
+    return -np.mean(y * logsigma(z) + (1 - y) * logsigma(-z))
 
 
 # %%
@@ -103,7 +110,9 @@ def d_er(y, X, w):
 
     """
     # YOUR CODE HERE
-    pass
+    # Gradient: -1/N * sum_i (y_i - sigma(x_i^T w)) x_i = -1/N * X^T (y - sigma(Xw))
+    N = X.shape[0]
+    return -X.T @ (y - sigma(X @ w)) / N
 
 
 # %%
@@ -113,11 +122,12 @@ def d_er(y, X, w):
 def gd_er(y, X):
     def objective(w):
         # YOUR CODE HERE
-        pass
+        return er(y, X, w)
 
     def update(w, eps):
         # YOUR CODE HERE
-        pass
+        # one GD epoch = one step against the full gradient
+        return w - eps * d_er(y, X, w)
 
     return (objective, update)
 
@@ -127,7 +137,11 @@ def sgdepoch_er(y, X, w, eps):
     """Run one SGD epoch and return the updated weight vector."""
     # Run N stochastic gradient steps (without replacement).
     # YOUR CODE HERE
-    pass
+    # Visit the examples in a random order; each step uses the gradient of the loss of a
+    # single example, -(y_i - sigma(x_i^T w)) x_i.
+    for i in np.random.permutation(X.shape[0]):
+        w = w + eps * (y[i] - sigma(X[i] @ w)) * X[i]
+    return w
 
 
 # %%
@@ -137,7 +151,7 @@ def sgdepoch_er(y, X, w, eps):
 def sgd_er(y, X):
     def objective(w):
         # YOUR CODE HERE
-        pass
+        return er(y, X, w)
 
     def update(w, eps):
         return sgdepoch_er(y, X, w, eps)
