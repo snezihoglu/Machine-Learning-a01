@@ -1,0 +1,30 @@
+GD
+accuracy=0.91861979
+mean_test_log_loss=0.27915499
+confusion_matrix_rows_true_columns_predicted:
+[[887  54]
+ [ 71 524]]
+              precision    recall  f1-score   support
+
+           0     0.9259    0.9426    0.9342       941
+           1     0.9066    0.8807    0.8934       595
+
+    accuracy                         0.9186      1536
+   macro avg     0.9162    0.9116    0.9138      1536
+weighted avg     0.9184    0.9186    0.9184      1536
+
+SGD
+accuracy=0.91731771
+mean_test_log_loss=0.28274013
+confusion_matrix_rows_true_columns_predicted:
+[[886  55]
+ [ 72 523]]
+              precision    recall  f1-score   support
+
+           0     0.9248    0.9416    0.9331       941
+           1     0.9048    0.8790    0.8917       595
+
+    accuracy                         0.9173      1536
+   macro avg     0.9148    0.9103    0.9124      1536
+weighted avg     0.9171    0.9173    0.9171      1536
+
