@@ -123,6 +123,25 @@ wz_gd, vz_gd, ez_gd = optimize(gd_er(y, Xz), w0, nepochs=500)
 # %%
 # look at how gradient descent made progess
 # YOUR CODE HERE
+# Empirical risk per epoch (log scale) and the step size chosen by the bold driver
+nextplot()
+plt.semilogy(vz_gd)
+plt.xlabel("Epoch")
+plt.ylabel("Empirical risk (log scale)")
+plt.title("Gradient descent: empirical risk per epoch")
+plt.show()
+
+nextplot()
+plt.semilogy(ez_gd)
+plt.xlabel("Epoch")
+plt.ylabel("Step size (log scale)")
+plt.title("Gradient descent: step size per epoch (bold driver)")
+plt.show()
+
+for e in [0, 10, 50, 100, 200, 300, 500]:
+    print(f"epoch {e:3d}: risk {vz_gd[e]:.4f}, step size {ez_gd[e]:.4g}")
+print("epochs in which the risk went up (step size halved):", np.sum(np.diff(vz_gd) > 0))
+print("norm of the gradient at the end:", np.linalg.norm(d_er(y, Xz, wz_gd)))
 
 # %% [markdown]
 # ## 2d Stochastic gradient descent
@@ -192,3 +211,94 @@ wz_sgd, vz_sgd, ez_sgd = optimize(sgd_er(y, Xz), w0, nepochs=500)
 
 # %%
 # YOUR CODE HERE
+import time
+
+# Reference point: run GD for many more epochs to estimate the minimal empirical risk R*
+# (about 3 seconds; sklearn's LogisticRegression without penalty and bias gives the same value)
+wz_ref, vz_ref, _ = optimize(gd_er(y, Xz), w0, nepochs=30000, verbose=False)
+r_star = vz_ref[-1]
+print(f"estimated minimum of the empirical risk R* = {r_star:.5f}")
+
+# Cost of one epoch: GD computes one full gradient, SGD performs N single-example updates
+f_gd, upd_gd = gd_er(y, Xz)
+f_sgd, upd_sgd = sgd_er(y, Xz)
+t = time.perf_counter(); [upd_gd(w0, 0.01) for _ in range(50)]
+t_gd = (time.perf_counter() - t) / 50
+t = time.perf_counter(); [upd_sgd(w0, 0.01) for _ in range(5)]
+t_sgd = (time.perf_counter() - t) / 5
+print(f"time per epoch: GD {1000 * t_gd:.2f} ms, SGD {1000 * t_sgd:.1f} ms ({t_sgd / t_gd:.0f}x)")
+
+# 1) Risk per epoch (distance to R*, log-log scale to see the early phase as well)
+epochs = np.arange(1, len(vz_gd))
+nextplot()
+plt.loglog(epochs, vz_gd[1:] - r_star, label="GD")
+plt.loglog(epochs, vz_sgd[1:] - r_star, label="SGD")
+plt.xlabel("Epoch")
+plt.ylabel("Empirical risk minus R*")
+plt.title("Progress per epoch")
+plt.legend()
+plt.show()
+
+# 2) Risk over (estimated) running time
+nextplot()
+plt.loglog(epochs * t_gd, vz_gd[1:] - r_star, label="GD")
+plt.loglog(epochs * t_sgd, vz_sgd[1:] - r_star, label="SGD")
+plt.xlabel("Running time in seconds (estimated, log scale)")
+plt.ylabel("Empirical risk minus R*")
+plt.title("Progress over running time")
+plt.legend()
+plt.show()
+
+# 3) Step sizes chosen by the bold driver
+nextplot()
+plt.semilogy(ez_gd, label="GD")
+plt.semilogy(ez_sgd, label="SGD")
+plt.xlabel("Epoch")
+plt.ylabel("Step size (log scale)")
+plt.title("Step sizes chosen by the bold driver")
+plt.legend()
+plt.show()
+
+
+# 4) Summary of the fitted models
+def accuracy(Xs, ys, w):
+    return np.mean((Xs @ w > 0) == ys)
+
+
+def first_epoch_within(v, tol):
+    """First epoch with risk at most (1 + tol) * R*, or None."""
+    idx = np.where(v <= (1 + tol) * r_star)[0]
+    return int(idx[0]) if len(idx) > 0 else None
+
+
+summary = pd.DataFrame(
+    {
+        "final risk": [vz_gd[-1], vz_sgd[-1], r_star],
+        "epoch risk <= 1.10 R*": [first_epoch_within(vz_gd, 0.10), first_epoch_within(vz_sgd, 0.10), None],
+        "epoch risk <= 1.05 R*": [first_epoch_within(vz_gd, 0.05), first_epoch_within(vz_sgd, 0.05), None],
+        "train accuracy": [accuracy(Xz, y, w) for w in [wz_gd, wz_sgd, wz_ref]],
+        "test accuracy": [accuracy(Xtestz, ytest, w) for w in [wz_gd, wz_sgd, wz_ref]],
+        "test log loss": [er(ytest, Xtestz, w) for w in [wz_gd, wz_sgd, wz_ref]],
+        "norm of w": [np.linalg.norm(w) for w in [wz_gd, wz_sgd, wz_ref]],
+        "steps halved": [np.sum(np.diff(vz_gd) > 0), np.sum(np.diff(vz_sgd) > 0), None],
+    },
+    index=["GD (500 epochs)", "SGD (500 epochs)", "GD (30000 epochs)"],
+)
+print(summary.round(4).to_string())
+
+# 5) Do both methods find the same weights?
+nextplot()
+plt.scatter(wz_gd, wz_sgd)
+lim = np.abs(np.concatenate([wz_gd, wz_sgd])).max() * 1.1
+plt.plot([-lim, lim], [-lim, lim], "k--", linewidth=0.8)
+plt.xlabel("weight (GD)")
+plt.ylabel("weight (SGD)")
+plt.title("Weights found by GD vs. SGD")
+plt.show()
+print("correlation of the weight vectors:", np.corrcoef(wz_gd, wz_sgd)[0, 1].round(4))
+
+# 6) SGD is random: repeat it with different seeds
+for seed in [1, 2, 3]:
+    np.random.seed(seed)
+    _, v, e = optimize(sgd_er(y, Xz), w0, nepochs=500, verbose=False)
+    print(f"SGD seed {seed}: risk after 1 epoch {v[1]:.4f}, after 500 epochs {v[-1]:.5f}, final step size {e[-1]:.2g}")
