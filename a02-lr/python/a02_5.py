@@ -73,7 +73,7 @@ def opt_pytorch():
 
     def objective(_):
         outputs = model(Xztorch)
-        return criterion(outputs, ytorch)
+        return criterion(outputs, ytorch).item()
 
     def update(_1, _2):
         for i, (examples, labels) in enumerate(train_loader):
@@ -97,7 +97,7 @@ batch_size = 100  # number of data points to sample for gradient estimate
 shuffle = True  # sample with replacement (false) or without replacement (true)
 
 train_loader = torch.utils.data.DataLoader(train, batch_size, shuffle=True)
-wz_t, vz_t, _ = optimize(opt_pytorch(), None, nepochs=100, eps0=None, verbose=True)
+wz_t, vz_t, _ = optimize(opt_pytorch(), None, nepochs=100, eps0=learning_rate, verbose=False)
 
 # %%
 

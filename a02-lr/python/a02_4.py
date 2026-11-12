@@ -90,11 +90,88 @@ wz_gd_rr, vz_gd_rr, ez_gd_rr = optimize(
 
 # %%
 # YOUR CODE HERE
+from pathlib import Path
+
+regularization_values = np.array([0.0, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0])
+task4_models = {}
+task4_rows = []
+for regularization in regularization_values:
+    fitted, risk_history, step_history = optimize(
+        gd_rr(y, Xz, lambda_=float(regularization)),
+        w0.copy(),
+        nepochs=500,
+        verbose=False,
+    )
+    task4_models[float(regularization)] = fitted
+    test_labels = classify(Xtestz, fitted)
+    task4_rows.append(
+        {
+            "lambda": regularization,
+            "training_empirical_risk": er(y, Xz, fitted),
+            "test_mean_log_loss": er(ytest, Xtestz, fitted),
+            "test_accuracy": sklearn.metrics.accuracy_score(ytest, test_labels),
+            "weight_norm": np.linalg.norm(fitted),
+        }
+    )
+
+task4_metrics = pd.DataFrame(task4_rows).set_index("lambda")
+print(task4_metrics.round(6).to_string())
+
+task4_results = Path("../results/task4")
+task4_results.mkdir(parents=True, exist_ok=True)
+task4_metrics.to_csv(task4_results / "metrics.csv")
+
+fig, axes = plt.subplots(1, 3, figsize=(13, 4))
+for ax, metric, title in zip(
+    axes,
+    ["training_empirical_risk", "test_mean_log_loss", "test_accuracy"],
+    ["Training empirical risk", "Test mean log-loss", "Test accuracy"],
+):
+    ax.plot(task4_metrics.index, task4_metrics[metric], marker="o")
+    ax.set_xscale("symlog", linthresh=0.001)
+    ax.set(xlabel=r"Regularization parameter $\lambda$", title=title)
+axes[0].set_ylabel("Risk")
+axes[1].set_ylabel("Mean log-loss")
+axes[2].set_ylabel("Accuracy")
+fig.suptitle("Effect of L2 regularization on training and test performance")
+fig.tight_layout()
+fig.savefig(task4_results / "regularization_metrics.png", dpi=180, bbox_inches="tight")
+plt.show()
 
 # %% [markdown]
 # ## 4c Composition of Weight Vector
 
 # %%
 # YOUR CODE HERE
+weight_matrix = np.vstack([task4_models[float(value)] for value in regularization_values])
+weight_norms = np.linalg.norm(weight_matrix, axis=1)
+strongest_features = np.argsort(np.abs(weight_matrix[0]))[-8:]
+strongest_features = strongest_features[np.argsort(np.abs(weight_matrix[0, strongest_features]))[::-1]]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+axes[0].plot(regularization_values, weight_norms, marker="o")
+axes[0].set_xscale("symlog", linthresh=0.001)
+axes[0].set(xlabel=r"Regularization parameter $\lambda$", ylabel=r"$\|w\|_2$", title="Total weight magnitude")
+for feature_index in strongest_features:
+    axes[1].plot(regularization_values, weight_matrix[:, feature_index], marker="o", label=features[feature_index])
+axes[1].set_xscale("symlog", linthresh=0.001)
+axes[1].set(xlabel=r"Regularization parameter $\lambda$", ylabel="Coefficient", title="Largest unregularized coefficients")
+axes[1].axhline(0, color="black", linewidth=0.7)
+axes[1].legend(fontsize="small")
+fig.suptitle("L2 regularization shrinks logistic-regression weights")
+fig.tight_layout()
+fig.savefig(task4_results / "weight_composition.png", dpi=180, bbox_inches="tight")
+plt.show()
+
+selected_weights = pd.DataFrame(
+    weight_matrix[:, strongest_features],
+    index=regularization_values,
+    columns=features[strongest_features],
+)
+selected_weights.to_csv(task4_results / "selected_weights.csv")
+print("Largest coefficients at lambda=0, followed across the regularization grid:")
+print(selected_weights.round(4).to_string())
+print("All coefficient norms:")
+print(pd.Series(weight_norms, index=regularization_values, name="L2 norm").round(4).to_string())
 
 # %%

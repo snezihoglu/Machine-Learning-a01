@@ -163,31 +163,27 @@ def sgd_er(y, X):
 def predict(Xtest, w):
     """Returns vector of predicted confidence values for logistic regression with
     weight vector w."""
-    # YOUR CODE HERE
-    pass
+    return sigma(np.dot(Xtest, w))
 
 
 def classify(Xtest, w):
     """Returns 0/1 vector of predicted class labels for logistic regression with
     weight vector w."""
-    # YOUR CODE HERE
-    pass
+    return (predict(Xtest, w) >= 0.5).astype(int)
 
 
 # %%
 def rr(y, X, w, lambda_):
     """Regularized risk of logistic regression with weights w and L2
     regularization parameter lambda_"""
-    # YOUR CODE HERE
-    pass
+    return er(y, X, w) + 0.5 * lambda_ * np.sum(w**2)
 
 
 # %%
 def d_rr(y, X, w, lambda_):
     """Gradient of regularized risk of logistic regression with weights
     w and L2 regularization parameter lambda_."""
-    # YOUR CODE HERE
-    pass
+    return d_er(y, X, w) + lambda_ * w
 
 
 # %%
@@ -195,8 +191,13 @@ def d_rr(y, X, w, lambda_):
 # fitting an RRM estimate of logistic regression with gradient descent (should
 # return a tuple of two functions; see optimize)
 def gd_rr(y, X, lambda_):
-    # YOUR CODE HERE
-    pass
+    def objective(w):
+        return rr(y, X, w, lambda_)
+
+    def update(w, eps):
+        return w - eps * d_rr(y, X, w, lambda_)
+
+    return (objective, update)
 
 
 # %%
