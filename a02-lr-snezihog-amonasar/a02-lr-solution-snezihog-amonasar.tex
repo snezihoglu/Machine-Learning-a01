@@ -1,0 +1,283 @@
+% Do not change document class, margins, fonts, etc.
+\documentclass[a4paper,oneside,bibliography=totoc]{scrartcl}
+
+% some useful packages (add more as needed)
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{algorithm} % you can modify the algorithm style to your liking
+\usepackage{algorithmic}
+\usepackage{csquotes}
+\renewcommand{\algorithmiccomment}[1]{\hfill\textit{// #1}}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage[colorlinks,citecolor=Green]{hyperref} % you may change/remove the colors
+\usepackage{lipsum} % you do not need this
+\usepackage{environ}
+\usepackage{tikz}
+\usetikzlibrary{positioning,shapes.gates.logic.US,shapes.gates.logic.IEC,automata,arrows, backgrounds}
+\usepackage{natbib}
+\bibliographystyle{chicagoa}
+\setcitestyle{authoryear,round,semicolon,aysep={},yysep={,}} \let\cite\citep
+
+% example enviroments and commands (add more as needed)
+\newtheorem{definition}{Definition} \newtheorem{proposition}{Proposition}
+
+\newcommand\todo[1]{\textcolor{red}{\framebox{\footnotesize TODO}\expandafter\ifx\expandafter\relax\detokenize{#1}\relax\else\ #1\fi}}
+
+
+% DO NOT MODIFY
+\newlength\oldparskip
+\NewEnviron{answer}[1][8cm]{%
+  \sbox{0}{\parbox[t][#1][t]{0.99\linewidth}{%
+      \setlength{\oldparskip}{\parskip}%
+      \setlength{\parskip}{.5em}%
+      \BODY%
+      ~%
+      \setlength{\parskip}{\oldparskip}%
+    }}%
+
+  \begin{tikzpicture}
+    % inner sep restores the \fbox padding
+    \node[inner sep=\fboxsep, outer sep=0pt] (A) {\usebox{0}};
+    % border thickness like \fboxrule
+    \draw[line width=\fboxrule] (A.south west) rectangle (A.north east);
+  \end{tikzpicture}%
+  \vskip\baselineskip
+}
+
+\newcommand{\answerfig}[2]{%
+  \par\noindent
+  \makebox[\linewidth][c]{\includegraphics[width=0.98\linewidth]{#1}}\par
+  \vspace{-0.4\baselineskip}
+  {\footnotesize\centering #2\par}
+  \vspace{0.25em}
+}
+
+
+\begin{document}
+
+\title{ML26, Assignment 2}
+\author{Selma Nezihoglu (snezihog, 2390917)\\
+  Abhaykumar Narendrakumar Monasara (amonasar, S2188510)}
+\date{\today}
+
+\maketitle
+
+\section*{Task 1a) and Task 1c)}
+\begin{answer}[19.5cm]
+  \small
+  \answerfig{task1_densities.png}{KDEs of all 57 features: (a) raw data (provided plot),
+  (b) raw word frequencies up to their 99th percentile, (c) z-scored training data on $[-1,5]$.}
+
+  \textbf{1a)} The provided plot (a) is almost uninformative: all curves collapse into a single spike at $0$.
+  The $x$-axis has to cover the largest value, \texttt{capital\_run\_length\_total} (up to $15841$), whereas
+  word and character frequencies never exceed $42.8$ and $32.5$, respectively. On one axis spanning such
+  different scales, no individual distribution is visible. Plotting the raw word frequencies only up to
+  their 99th percentile (b) shows what plot (a) hides:
+  \begin{itemize}
+    \item \emph{Sparsity.} For the median feature, $84\%$ of the training emails have the value exactly $0$.
+    \item \emph{Right skew.} The distributions are strongly right-skewed (median skewness $9.4$): almost all
+          mass lies near $0$, followed by a long tail formed by a few emails with large values.
+    \item \emph{Exceptions.} Only the three capital-run-length features are never $0$, and they also have by
+          far the largest range.
+  \end{itemize}
+
+  \textbf{1c)} We z-scored both training and test data using the mean and standard deviation of the
+  training data. All features now share one scale, so every density is visible (c), and on the training data
+  each feature has mean $0$ and variance $1$. Because z-scoring is an affine map with positive slope, it
+  changes only location and scale, not shape: each curve is still a sharp peak with a long right tail. The
+  peak lies slightly \emph{below} $0$, since the many zero entries are mapped to $-\mu_j/\sigma_j<0$. Three
+  observations stand out:
+  \begin{itemize}
+    \item \emph{Extreme outliers.} Z-scores range from $-0.93$ to $45.1$, although $98.4\%$ of all values lie
+          in $[-1,3]$. The largest values belong to \texttt{capital\_run\_length\_longest} ($45.1$),
+          \texttt{capital\_run\_length\_average} ($40.3$) and \texttt{char\_freq\_\#} ($38.1$); in each case a
+          single email lies more than $38$ standard deviations above the mean.
+    \item \emph{Asymmetry.} Since the raw features are non-negative, the z-scores of feature $j$ are bounded
+          below by $-\mu_j/\sigma_j$, and no value falls below $-0.93$. The right tails, by contrast, are very
+          long, so the features are far from Gaussian.
+    \item \emph{Test data is not exactly standardized.} Test means lie in $[-0.06,0.09]$ and test variances in
+          $[0.05,2.76]$. This is expected: the test data is transformed with the training statistics, so no
+          information from the test set enters preprocessing.
+  \end{itemize}
+\end{answer}
+\section*{Task 2a)}
+\begin{answer}[19.5cm]
+  \small
+  \textbf{Claim.} Consider $p(y=1\mid\mathbf x)=\sigma(\mathbf w^\top\mathbf x+b)$ with empirical risk
+  \[
+    \hat R(\mathbf w,b)=\frac1N\sum_{i=1}^N \ell(y_i,s_i),\quad s_i=\mathbf w^\top\mathbf x_i+b,\quad
+    \ell(y,s)=-y\log\sigma(s)-(1-y)\log\sigma(-s).
+  \]
+  Rescale and shift every feature, $\tilde x_{ij}=a_j x_{ij}+c_j$ with constants $a_j\neq0$, $c_j\in\mathbb R$.
+  Then the smallest achievable empirical risk (the infimum, which is a minimum whenever a minimizer exists)
+  is the same on $\tilde{\mathbf X}$ and on $\mathbf X$.
+
+  \textbf{Proof.} The loss of example $i$ depends on the parameters only through its score $s_i$. Parameters
+  that yield the same score for every example therefore have the same empirical risk. Given any
+  $(\mathbf w,b)$ for the original data, set
+  \[
+    \tilde w_j=\frac{w_j}{a_j},\qquad \tilde b=b-\sum_{j=1}^D\frac{w_j c_j}{a_j}.
+  \]
+  Then for every example $i$
+  \[
+    \tilde{\mathbf w}^\top\tilde{\mathbf x}_i+\tilde b
+    =\sum_{j=1}^D\frac{w_j}{a_j}(a_j x_{ij}+c_j)+b-\sum_{j=1}^D\frac{w_j c_j}{a_j}
+    =\mathbf w^\top\mathbf x_i+b,
+  \]
+  hence $\hat R_{\tilde{\mathbf X}}(\tilde{\mathbf w},\tilde b)=\hat R_{\mathbf X}(\mathbf w,b)$. The map
+  $(\mathbf w,b)\mapsto(\tilde{\mathbf w},\tilde b)$ is a bijection with inverse $w_j=a_j\tilde w_j$,
+  $b=\tilde b+\sum_j\tilde w_j c_j$. Both problems therefore attain exactly the same set of risk values, and
+  their infima coincide. In particular, if $(\mathbf w^*,b^*)$ is an ERM estimate on $\mathbf X$, its image
+  $(\tilde{\mathbf w}^*,\tilde b^*)$ is an ERM estimate on $\tilde{\mathbf X}$ with the same risk and the
+  same predictions. \hfill$\square$
+
+  The bias term is essential for the shift: without $b$, the term $\sum_j w_j c_j/a_j$ cannot be absorbed.
+  Pure rescaling ($c_j=0$) still leaves the minimal risk unchanged, but a shift in general does not.
+
+  \textbf{Why z-scores, then?} The ERM solutions are equivalent, but \emph{finding} them is not equally easy:
+  \begin{itemize}
+    \item \emph{Optimization.} Gradient descent uses a single step size for all weights. On the raw data the
+          features differ by orders of magnitude (Task 1a), so a step size that is stable along the
+          large-scale features is far too small for the others. Accordingly, the condition number of
+          $\mathbf X^\top\mathbf X$ drops from $1.8\cdot10^{9}$ on the raw data to $2.9\cdot10^{3}$ on the
+          z-scores. With the settings of Task 2 (500 epochs, $\varepsilon_0=0.01$, bold driver), GD reaches
+          risk $0.2145$ and training accuracy $92.2\%$ on z-scores, but only risk $2.38$ and accuracy
+          $49.7\%$ on the raw data.
+    \item \emph{No bias.} Our model has no bias term (Task 2b), so the argument above does not cover shifts:
+          z-scoring changes which decision functions the model can represent. Centering the features at $0$
+          partly compensates for the missing bias.
+    \item \emph{Regularization and interpretation.} The $L_2$ penalty of Task 4 is not invariant to
+          rescaling, since features on a small scale need large weights and are therefore penalized more.
+          Weights can also only be compared (Task 3c) when all features are on the same scale.
+  \end{itemize}
+\end{answer}
+\section*{Task 2e)}
+\begin{answer}[19.5cm]
+  \small
+  \answerfig{task2_gd_sgd.png}{Settings: $\mathbf w_0\sim\mathcal N(\mathbf 0,\mathbf I)$
+  (seed 0), $\varepsilon_0=0.01$, 500 epochs, bold driver. $\hat R^*\approx0.2047$ is estimated from a
+  GD run with 30\,000 epochs.}
+
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lcccccc}
+    \toprule
+     & $\hat R$ after 500 ep. & epochs to $1.1\,\hat R^*$ & time/epoch & train acc. & test acc. & $\lVert\mathbf w\rVert_2$ \\
+    \midrule
+    GD  & 0.2145 & 144 & 0.09\,ms & 92.2\% & 91.9\% & 8.9 \\
+    SGD & 0.2164 & 8   & 4.6\,ms  & 92.1\% & 91.7\% & 6.8 \\
+    \bottomrule
+  \end{tabular}}
+
+  \textbf{Per epoch (a).} SGD makes far more progress early on. Its risk is $0.32$ after one epoch, and
+  it comes within $10\%$ of $\hat R^*$ after 8 epochs. This is expected, since an SGD epoch performs
+  $N=3065$ updates while a GD epoch performs one. GD barely improves over roughly the first 50 epochs
+  and needs 144 epochs to reach the same level.
+
+  \textbf{Step sizes (c).} GD's slow start is a step-size problem: with $\varepsilon_0=0.01$, a single
+  full-gradient step per epoch moves $\mathbf w$ very little. The bold driver increases the step size
+  by $5\%$ per epoch until it reaches about $60$ in epoch 179. After that it oscillates between roughly
+  $8$ and $35$ (23 halvings), and GD overtakes SGD. For SGD, the bold driver is counterproductive.
+  Gradient noise from single examples often raises the risk from one epoch to the next, which triggers
+  36 halvings. The step size decays to about $10^{-3}$, and SGD stalls at a risk of $0.216$. Three
+  further seeds give the same final risk to within $\pm0.00002$, so the random example order has a
+  negligible effect here.
+
+  \textbf{Per running time (b).} In wall-clock time, GD is clearly faster. A GD epoch consists of
+  vectorized matrix--vector products, whereas an SGD epoch is a Python loop over 3065 examples and takes
+  about 50 times as long. GD reaches a lower risk after $0.04$\,s than SGD does after $2.3$\,s, i.e.\
+  after all 500 epochs. Part of this gap comes from the implementation rather than the algorithms; a
+  vectorized or compiled SGD loop would be considerably faster per epoch.
+
+  \textbf{Convergence.} Neither method has converged after 500 epochs, and both remain about $0.01$
+  above $\hat R^*$. In the 30\,000-epoch reference run, the risk continues to decrease slowly while
+  $\lVert\mathbf w\rVert_2$ grows to about $50$. For prediction, the remaining gap matters little. Both
+  models reach about $92\%$ training and test accuracy, and the final GD and SGD weight vectors have a
+  correlation of $0.96$.
+
+  \textbf{Conclusion.} On this small data set, full-batch GD is the better choice. Its epochs are cheap,
+  and the bold driver lets it exploit large step sizes. SGD becomes worthwhile when the full gradient
+  is expensive to compute, i.e.\ for very large $N$. To converge, however, it needs a decreasing
+  step-size schedule rather than a heuristic that reacts to risk increases caused by gradient noise.
+\end{answer}
+\section*{Task 3b) and 3c)}
+\begin{answer}[19.5cm]
+Both models were evaluated after 500 epochs on the same test set of 1,536 emails, with 3,065 emails used for training and the same seeded initialization. GD achieved 91.86\% accuracy and a mean test log-loss of 0.2792, while SGD achieved 91.73\% accuracy and 0.2827. The confusion matrices, with rows representing true labels and columns representing predicted labels, are GD $\begin{bmatrix}887&54\\71&524\end{bmatrix}$ and SGD $\begin{bmatrix}886&55\\72&523\end{bmatrix}$. For spam classification, GD achieved a precision of 0.9066 and a recall of 0.8807, compared with 0.9048 and 0.8790 for SGD. The precision--recall curves are nearly identical, and precision remains above the test-set spam prevalence baseline (0.387) across much of the recall range.
+
+The largest-magnitude coefficients correspond to \texttt{word\_freq\_3d}, \texttt{capital\_run\_length\_longest}, and \texttt{char\_freq\_\$}, all with positive weights, while \texttt{word\_freq\_hp} has a negative weight. Among the smallest coefficients are \texttt{word\_freq\_650}, \texttt{word\_freq\_make}, and \texttt{word\_freq\_report}. Positive coefficients increase the spam logit, whereas negative coefficients decrease it. These weights reflect associations learned by the models rather than causal relationships; moreover, correlated features may capture overlapping predictive information.
+
+\begin{center}
+\includegraphics[width=0.57\linewidth]{results/task3/confusion_matrices.png}
+
+\includegraphics[width=0.45\linewidth]{results/task3/precision_recall.png}\hfill
+\includegraphics[width=0.45\linewidth]{results/task3/feature_weights.png}
+\end{center}
+\end{answer}
+
+\section*{Task 4b)}
+\begin{answer}[19.5cm]
+We trained L2-regularized logistic regression with gradient descent for 500 epochs at each
+$\lambda\in\{0,0.001,0.01,0.1,1,10,100,1000\}$, always starting from the same initial vector. The
+objective minimized during training is $\mathrm{ER}(w)+\tfrac{\lambda}{2}\|w\|_2^2$, but the reported
+training risk is the unregularized mean log-loss $\mathrm{ER}(w)$.
+
+Log-loss and accuracy favour different values of $\lambda$. Training risk increases monotonically
+from 0.21445 at $\lambda=0$ to 0.69267 at $\lambda=1000$, as expected, since the penalty pulls $w$
+away from the minimizer of the empirical risk. Test log-loss rises over the same range from 0.27915 to
+0.69267. Test accuracy, in contrast, first improves slightly: from 91.86\% at $\lambda=0$ it reaches a
+maximum of 92.06\% at $\lambda=0.01$, then falls to 91.15\% at $\lambda=0.1$ and 89.32\% at $\lambda=1$,
+and levels off at 88.74\% for $\lambda=10$ and 88.61\% for $\lambda=100$ and $1000$.
+
+The gain at $\lambda=0.01$ is only 0.20 percentage points, and the test log-loss of this model
+(0.29038) is higher than that of the unregularized one. The two metrics disagree because they measure
+different things. Accuracy only checks on which side of the threshold each prediction falls, whereas
+log-loss scores the predicted probabilities and penalizes confident mistakes heavily. A model can
+therefore classify slightly more emails correctly while assigning less accurate probabilities overall.
+Since we only stored aggregate metrics, we cannot identify which individual predictions changed. The
+choice of $\lambda$ thus depends on the evaluation metric: log-loss favours $\lambda=0$, accuracy
+$\lambda=0.01$.
+
+For large $\lambda$, both training and test risk approach $\log 2\approx0.693$, the loss of predicting
+0.5 for every example. The predicted probabilities then carry little information, and the model
+clearly underfits.
+\begin{center}
+\includegraphics[width=0.94\linewidth]{results/task4/regularization_metrics.png}
+\end{center}
+\end{answer}
+\section*{Task 4c)}
+\begin{answer}[19.5cm]
+The training objective is $\mathrm{ER}(w)+\tfrac{\lambda}{2}\|w\|_2^2$, so increasing $\lambda$ penalizes
+large coefficients more strongly. Because the model has no bias term, every component of $w$ is
+penalized. The weight plot follows the eight coefficients with the largest absolute values at
+$\lambda=0$. Their magnitudes generally shrink as $\lambda$ grows, and so does the norm of the full weight
+vector: $\|w\|_2$ falls from 8.9448 at $\lambda=0$ to 0.0628 at $\lambda=10$ and 0.000692 at
+$\lambda=1000$. The three largest coefficients at $\lambda=0$, for \texttt{word\_freq\_3d},
+\texttt{capital\_run\_length\_longest} and \texttt{char\_freq\_\$} (6.9897, 2.3443 and 2.2043), are
+0.0000, 0.0001 and 0.0002 at $\lambda=1000$ when rounded to four decimals. \texttt{word\_freq\_hp} keeps
+its negative sign but likewise approaches zero.
+
+The shrinkage is not uniform across features. At $\lambda=0.01$, \texttt{word\_freq\_3d} has already
+dropped to 0.2622, while \texttt{char\_freq\_\$} retains 1.1009, so the ranking of the coefficients
+changes. \texttt{word\_freq\_857} even changes sign between $\lambda=0.01$ and $\lambda=0.1$.
+Regularization therefore does more than rescale the unregularized solution: it also changes the
+relative weight the model assigns to individual features.
+
+As $w\to\mathbf 0$, the logits $Xw$ tend to zero as well. Without a bias term, the predicted
+probabilities $\sigma(Xw)$ then approach 0.5 for every example, and training and test log-loss rise
+towards $\log 2$, the loss of a constant prediction of 0.5. Accuracy is affected far less, because the
+predicted class depends only on which side of the decision threshold $x^\top w$ falls, not on its
+magnitude. At $\lambda=1000$ the model still reaches 88.61\% accuracy, even though its predicted
+probabilities are so close to 0.5 that they carry almost no information about confidence.
+
+\begin{center}
+\includegraphics[width=0.91\linewidth]{results/task4/weight_composition.png}
+\end{center}
+\end{answer}
+\newpage
+\input{ai-declaration.tex}
+
+\end{document}
