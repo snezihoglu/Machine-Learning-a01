@@ -43,6 +43,9 @@ lat = coord["lat"]
 
 # YOUR PART
 # Normalise the data to z scores and save as X
+# Each column (climate variable) is centered by its mean and scaled by its standard deviation,
+# so that every column has mean 0 and variance 1. X stays a DataFrame to keep the column names.
+X = (climate - climate.mean()) / climate.std(ddof=0)
 
 # %%
 # Plotting
