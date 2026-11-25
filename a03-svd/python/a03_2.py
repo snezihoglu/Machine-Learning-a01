@@ -73,6 +73,34 @@ plot_xy(lon, lat, U[:, 0])
 # For interpretation, it may also help to look at the other component matrices and
 # perhaps use other plot functions (e.g., plot_matrix).
 # YOUR PART
+# (1) First 5 left singular vectors on the map: color = entry of U[:, k] for each location
+fig, axes = plt.subplots(2, 3, figsize=(15, 8))
+for k in range(5):
+    ax = axes.flat[k]
+    plot_xy(lon, lat, U[:, k], axis=ax, s=4)
+    ax.set_title(f"U[:, {k}]  (sigma = {s[k]:.1f})")
+    ax.set_xlabel("longitude")
+    ax.set_ylabel("latitude")
+axes.flat[5].axis("off")
+plt.tight_layout()
+plt.show()
+
+# (2) Corresponding right singular vectors: which climate variables make up each pattern.
+# Each row of Vt has 48 entries = 4 groups (min, max, avg temperature, rain) x 12 months.
+months = np.arange(1, 13)
+fig, axes = plt.subplots(1, 5, figsize=(18, 3.5), sharey=True)
+for k in range(5):
+    ax = axes[k]
+    for g, name in enumerate(["min temp", "max temp", "avg temp", "rain"]):
+        ax.plot(months, Vt[k, 12 * g : 12 * (g + 1)], marker=".", label=name)
+    ax.axhline(0, color="gray", linewidth=0.8)
+    ax.set_title(f"Vt[{k}, :]")
+    ax.set_xlabel("month")
+    ax.set_xticks([1, 4, 7, 10])
+axes[0].set_ylabel("weight")
+axes[0].legend(fontsize="small")
+plt.tight_layout()
+plt.show()
 
 # %% [markdown]
 # ## 2d
