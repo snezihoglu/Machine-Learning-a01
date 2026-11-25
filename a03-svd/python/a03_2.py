@@ -223,7 +223,34 @@ for Z, v in zip(Zs, flip_score):
 # Here is the empty plot that you need to fill (one line per choice of Z: RSME between
 # original X and the reconstruction from size-Z SVD of noisy versions)
 # YOUR PART
+def rmse(A, B):
+    """Root-mean-square error ||A - B||_F / sqrt(N D)."""
+    return np.linalg.norm(A - B, "fro") / np.sqrt(A.size)
+
+
+np.random.seed(0)
+Xa = X.to_numpy()
+epsilons = np.linspace(0, 2, 21)
+Z_values = [1, 2, 5, 10, 48]
+n_rep = 3  # average over a few noise draws per epsilon
+errors = np.zeros((len(epsilons), len(Z_values)))
+for i, epsilon in enumerate(epsilons):
+    for _ in range(n_rep):
+        X_noise = Xa + np.random.randn(*Xa.shape) * epsilon
+        svd_noise = svd(X_noise, full_matrices=False)
+        for j, Z in enumerate(Z_values):
+            errors[i, j] += rmse(Xa, svdcomp(svd_noise, range(Z))) / n_rep
+
 nextplot()
-plt.plot()
+for j, Z in enumerate(Z_values):
+    plt.plot(epsilons, errors[:, j], marker=".", label=f"Z = {Z}")
+plt.plot(epsilons, epsilons, "k:", label=r"noisy data itself ($= \epsilon$)")
+plt.legend()
 plt.xlabel(r"Noise level ($\epsilon$)")
 plt.ylabel("Reconstruction RMSE vs. original data")
+plt.show()
+
+errors_df = pd.DataFrame(errors, index=epsilons.round(1), columns=[f"Z={Z}" for Z in Z_values])
+print("best Z for each noise level:")
+print(errors_df.idxmin(axis=1).to_string())
+errors_df.iloc[::4].round(3)
