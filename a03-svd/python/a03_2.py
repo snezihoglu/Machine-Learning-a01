@@ -138,23 +138,83 @@ geo.round(2)
 # %%
 # 2e(i) Guttman-Kaiser
 # YOUR PART
+# On z-scores, the variance of the k-th SVD score is sigma_k^2 / (N - 1) (lecture 07-4, sl. 12).
+# Keep the largest Z such that this variance is > 1 for all k <= Z, i.e. every kept component
+# has more variance than one original (normalized) feature.
+N, D = X.shape
+score_var = s**2 / (N - 1)
+Z_gk = int(np.argmax(score_var <= 1)) if np.any(score_var <= 1) else D
+print("variance of the first 8 SVD scores:", score_var[:8].round(2))
+print("Guttman-Kaiser: Z =", Z_gk)
 
 # %%
 # 2e(ii) 90% squared Frobenius norm
 # YOUR PART
+# Smallest Z such that the first Z squared singular values make up >= 90% of the total
+energy = np.cumsum(s**2) / np.sum(s**2)
+Z_90 = int(np.argmax(energy >= 0.9)) + 1
+print("cumulative share of squared Frobenius norm:", energy[:6].round(3))
+print("90% of squared Frobenius norm: Z =", Z_90)
 
 # %%
 # 2e(iii) Scree test
 # YOUR PART
+# Scree plot: squared singular values in decreasing order (linear and log scale)
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+ks = np.arange(1, D + 1)
+axes[0].plot(ks, s**2, marker="o")
+axes[0].set_title("Scree plot")
+axes[1].semilogy(ks, s**2, marker="o")
+axes[1].set_title("Scree plot (log scale)")
+for ax in axes:
+    ax.set_xlabel("k")
+    ax.set_ylabel(r"$\sigma_k^2$")
+    ax.axvline(5.5, color="red", linestyle="--", linewidth=0.8)
+plt.tight_layout()
+plt.show()
+print("squared singular values 1-8:", (s[:8] ** 2).round(0))
+print("ratio sigma_k^2 / sigma_{k+1}^2 for k = 1..7:", (s[:7] ** 2 / s[1:8] ** 2).round(2))
 
 # %%
 # 2e(iv) entropy
 # YOUR PART
+# Relative contributions f_k and their normalized entropy E (in [0, 1]);
+# choose the smallest Z with f_1 + ... + f_Z >= E
+f = s**2 / np.sum(s**2)
+f_pos = f[f > 0]  # convention 0 * log(1/0) = 0
+E = np.sum(f_pos * np.log(1 / f_pos)) / np.log(min(N, D))
+Z_entropy = int(np.argmax(np.cumsum(f) >= E)) + 1
+print(f"normalized entropy E = {E:.3f}")
+print("Entropy-based method: Z =", Z_entropy)
 
 # %%
 # 2e(v) random flips
 # Random sign matrix: np.random.choice([-1,1], X.shape)
 # YOUR PART
+# For each Z: residual X_{-Z} = X - X_Z, flip the sign of every entry at random, and compare
+# spectral norms: (||X_{-Z}||_2 - ||flipped X_{-Z}||_2) / ||X_{-Z}||_F.
+# Small values mean flipping barely changes the residual, i.e. it contains (almost) only noise.
+# We average over several random sign matrices to reduce randomness.
+np.random.seed(0)
+Xa = X.to_numpy()
+n_rep = 5
+Zs = np.arange(0, 21)
+flip_score = np.zeros(len(Zs))
+for idx, Z in enumerate(Zs):
+    R = Xa - svdcomp((U, s, Vt), range(Z)) if Z > 0 else Xa
+    norm2, normF = np.linalg.norm(R, 2), np.linalg.norm(R, "fro")
+    flipped = [np.linalg.norm(R * np.random.choice([-1, 1], R.shape), 2) for _ in range(n_rep)]
+    flip_score[idx] = (norm2 - np.mean(flipped)) / normF
+
+nextplot()
+plt.plot(Zs, flip_score, marker="o")
+plt.xlabel("Z")
+plt.ylabel(r"$(\|X_{-Z}\|_2 - \|\tilde X_{-Z}\|_2) \,/\, \|X_{-Z}\|_F$")
+plt.title("Random sign flips")
+plt.xticks(Zs)
+plt.show()
+for Z, v in zip(Zs, flip_score):
+    print(f"Z = {Z:2d}: {v:.4f}")
 
 # %% [markdown]
 # ## 2f
