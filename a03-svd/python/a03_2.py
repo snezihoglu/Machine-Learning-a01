@@ -109,6 +109,29 @@ plt.show()
 # Here is an example.
 plot_xy(U[:, 0], U[:, 1], lat - np.mean(lat))
 
+# %%
+# YOUR PART
+# Scatterplots between pairs of left singular vectors.
+# Top row: color = North-South position (latitude, centered), bottom row: East-West (longitude).
+pairs = [(0, 1), (0, 2), (1, 2), (2, 3)]
+fig, axes = plt.subplots(2, 4, figsize=(18, 8))
+for col, (i, j) in enumerate(pairs):
+    for row, (coord_values, coord_name) in enumerate([(lat, "North-South"), (lon, "East-West")]):
+        ax = axes[row, col]
+        plot_xy(U[:, i], U[:, j], coord_values - np.mean(coord_values), axis=ax, aspect="auto", s=4)
+        ax.set_xlabel(f"U[:, {i}]")
+        ax.set_ylabel(f"U[:, {j}]")
+        ax.set_title(f"U{i} vs U{j}, color: {coord_name}")
+plt.tight_layout()
+plt.show()
+
+# How strongly is each left singular vector related to the geographic position?
+geo = pd.DataFrame(
+    {f"U{k}": [np.corrcoef(U[:, k], lat)[0, 1], np.corrcoef(U[:, k], lon)[0, 1]] for k in range(5)},
+    index=["corr. with latitude", "corr. with longitude"],
+)
+geo.round(2)
+
 # %% [markdown]
 # ## 2e
 
