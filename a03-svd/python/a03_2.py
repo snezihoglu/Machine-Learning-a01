@@ -54,6 +54,13 @@ plt.show()
 # Compute the SVD of the normalized climate data and store it in variables U,s,Vt. What
 # is the rank of the data?
 # YOUR PART
+# Thin SVD: U is N x D (2575 x 48), s holds the D singular values, Vt is D x D.
+U, s, Vt = svd(X, full_matrices=False)
+print("shapes: U", U.shape, " s", s.shape, " Vt", Vt.shape)
+print("rank of X:", matrix_rank(X))
+np.set_printoptions(precision=3, suppress=True)
+print("singular values:\n", s)
+print(f"smallest singular value: {s[-1]:.3g},  largest/smallest: {s[0] / s[-1]:.3g}")
 
 # %% [markdown]
 # ## 2c
